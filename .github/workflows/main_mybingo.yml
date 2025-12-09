@@ -61,5 +61,6 @@ jobs:
         with:
           app-name: 'MyBingo'
           slot-name: 'Production'
-          package: .
+          package: "./dist"
+
           
