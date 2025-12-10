@@ -43,7 +43,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
-
+      - name: Check files after download
+        run: |
+          echo "=== Listing downloaded files ==="
+          ls -R .
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -57,3 +60,4 @@ jobs:
           app-name: 'MyBingo'
           slot-name: 'Production'
           package: './dist'
+
