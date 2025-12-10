@@ -35,8 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write      # OIDC に必要
-      contents: read       # checkout に必要
+      id-token: write
+      contents: read
+
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -56,6 +57,3 @@ jobs:
           app-name: 'MyBingo'
           slot-name: 'Production'
           package: './dist'
-
-
-
