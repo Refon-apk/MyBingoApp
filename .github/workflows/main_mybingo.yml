@@ -30,11 +30,10 @@ jobs:
       - name: Build Vite project
         run: npm run build
 
-      # dist の中身を deploy.zip に固めるステップ
-      - name: Create ZIP from dist
+      - name: Zip artifact for deployment
         run: |
           cd dist
-          zip -r ../deploy.zip ./*
+          zip -r ../deploy.zip .
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -48,4 +47,5 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: deploy.zip
+
 
