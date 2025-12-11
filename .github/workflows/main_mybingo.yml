@@ -24,7 +24,13 @@ jobs:
 
       - name: Build Vite project
         run: npm run build
-
+        
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_23D5F0A8623848A9BE78B72D81116D28 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_77B495E531BC4E9D8503E2FCD59EE489 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F8E473C4A5F74A32A32D3DDB91AABFE3 }}
       - name: Show build output
         run: ls -la dist || true
 
@@ -35,3 +41,4 @@ jobs:
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
 
           package: ./dist
+
