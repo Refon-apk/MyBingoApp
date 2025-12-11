@@ -10,7 +10,6 @@ permissions:
   id-token: write
   contents: read
 
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -30,13 +29,10 @@ jobs:
       - name: Build Vite project
         run: npm run build
 
-      - name: Debug build output
-        run: ls -R .
-        
-      - name: Zip artifact for deployment
+      - name: Zip dist contents ONLY
         run: |
           cd dist
-          zip -r ../deploy.zip .
+          zip -r ../deploy.zip *
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -50,5 +46,3 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: deploy.zip
-
-
