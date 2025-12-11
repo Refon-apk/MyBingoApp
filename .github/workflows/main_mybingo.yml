@@ -34,6 +34,9 @@ jobs:
           cd dist
           zip -r ../deploy.zip *
 
+      - name: Debug ZIP content
+        run: unzip -l deploy.zip
+        
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -46,3 +49,4 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
           package: deploy.zip
+
