@@ -292,8 +292,8 @@ function BingoMachinePage() {
     <main className={containerClass}>
       <div className={styles.topBar}>
         <header className={styles.header}>
-          <h1 className={styles.title}>俺のビンゴマシン</h1>
-          <p className={styles.subtitle}>develop by: 俺</p>
+          <h1 className={styles.title}>もとやまンゴ</h1>
+          <p className={styles.subtitle}>develop by: もとやま</p>
         </header>
         <button
           type="button"
