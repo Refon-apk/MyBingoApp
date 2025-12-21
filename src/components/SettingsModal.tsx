@@ -17,8 +17,12 @@ type SettingsModalProps = {
   isSpinning: boolean;
   historyDensity: HistoryDensity;
   historyOptions: HistoryOption[];
+  bgmVolume: number;
+  sfxVolume: number;
   onNumbersPerDrawChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onSelectHistoryDensity: (density: HistoryDensity) => void;
+  onBgmVolumeChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onSfxVolumeChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onOpenThemeModal: () => void;
   onClose: () => void;
 };
@@ -31,8 +35,12 @@ function SettingsModal({
   isSpinning,
   historyDensity,
   historyOptions,
+  bgmVolume,
+  sfxVolume,
   onNumbersPerDrawChange,
   onSelectHistoryDensity,
+  onBgmVolumeChange,
+  onSfxVolumeChange,
   onOpenThemeModal,
   onClose,
 }: SettingsModalProps) {
@@ -102,6 +110,46 @@ function SettingsModal({
           <p className={styles.settingHint}>
             表示される履歴数に合わせてサイズバランスを調整できます。
           </p>
+        </div>
+
+        <div className={styles.settingGroup}>
+          <label htmlFor="bgm-volume" className={styles.settingLabel}>
+            BGM 音量
+          </label>
+          <div className={styles.rangeRow}>
+            <input
+              id="bgm-volume"
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={bgmVolume}
+              onChange={onBgmVolumeChange}
+              className={styles.rangeInput}
+            />
+            <span className={styles.rangeValue}>{bgmVolume}%</span>
+          </div>
+          <p className={styles.settingHint}>演出中に流れるBGM音量を調整します。</p>
+        </div>
+
+        <div className={styles.settingGroup}>
+          <label htmlFor="sfx-volume" className={styles.settingLabel}>
+            効果音 音量
+          </label>
+          <div className={styles.rangeRow}>
+            <input
+              id="sfx-volume"
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={sfxVolume}
+              onChange={onSfxVolumeChange}
+              className={styles.rangeInput}
+            />
+            <span className={styles.rangeValue}>{sfxVolume}%</span>
+          </div>
+          <p className={styles.settingHint}>抽選番号表示などの効果音音量です。</p>
         </div>
 
         <button type="button" className={styles.themeLaunchButton} onClick={onOpenThemeModal}>

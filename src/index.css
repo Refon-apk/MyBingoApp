@@ -66,3 +66,164 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.freezeRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  pointer-events: none; /* 演出中も操作させたいなら none */
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: black;
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  background: white;
+  mix-blend-mode: screen;
+}
+
+.ims {
+  position: relative;
+  font-size: clamp(64px, 12vw, 160px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: white;
+  text-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+
+.fxRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.fxBg {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+/* 電源OFF演出の中心 */
+.offWrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* 画面がまだ点いている“面”っぽい光 */
+.screenGlow {
+  width: min(82vw, 900px);
+  height: min(46vh, 480px);
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.55), rgba(255,255,255,0.10), rgba(0,0,0,0));
+  box-shadow: 0 0 80px rgba(255,255,255,0.18);
+}
+
+/* 潰れる瞬間の細い線 */
+.collapseLine {
+  position: absolute;
+  width: min(82vw, 900px);
+  height: 2px;
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 0 18px rgba(255,255,255,0.8);
+}
+
+.letters {
+  position: relative;
+  display: flex;
+  gap: 0.06em;
+  font-size: clamp(72px, 14vw, 180px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 14px 44px rgba(0,0,0,0.7);
+}
+.letter { display: inline-block; }
+
+.imsQuotes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif;
+}
+
+.imsQuote {
+  position: absolute;
+  white-space: pre-line;
+  line-height: 1.25;
+  color: rgba(248, 250, 252, 0.9);
+  text-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+}
+
+.imsQuoteVertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.slotChanceText {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.slotChanceTextVisible {
+  opacity: 1;
+  animation: slotPop 0.6s ease forwards, slotChancePulse 1.2s ease-in-out 0.6s infinite;
+}
+
+.slotChanceLabel {
+  font-size: clamp(28px, 4vw, 64px);
+  letter-spacing: 0.4em;
+  font-weight: 800;
+  color: #ffe4e6;
+  text-shadow: 0 0 30px rgba(236, 72, 153, 0.8), 0 0 60px rgba(59, 130, 246, 0.6);
+}
+
+.slotChanceSub {
+  margin-top: 12px;
+  font-size: clamp(16px, 2vw, 28px);
+  letter-spacing: 0.2em;
+  color: #f8fafc;
+  text-shadow: 0 0 18px rgba(15, 23, 42, 0.65);
+}
+
+@keyframes slotChancePulse {
+  0% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.75;
+  }
+}
+@keyframes slotPop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(40px) scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px) scale(1.08);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}

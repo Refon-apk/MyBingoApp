@@ -1,5 +1,6 @@
 ﻿import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BatchResultModal from "../components/BatchResultModal";
+import ConfirmResetModal from "../components/ConfirmResetModal";
 import SettingsModal from "../components/SettingsModal";
 import ThemeModal from "../components/ThemeModal";
 import {
@@ -14,25 +15,45 @@ import {
 import classNames from "../utils/classNames";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
+  setBgmVolume as setBgmVolumeAction,
   setHistoryDensity as setHistoryDensityAction,
   setNumbersPerDraw as setNumbersPerDrawAction,
+  setSfxVolume as setSfxVolumeAction,
   setTheme as setThemeAction,
 } from "../store/settingsSlice";
+import bingoOpenSound from "../assets/bingoOpen.mp3";
+import freezeStartSound from "../assets/freezeStart.mp3";
 import styles from "./BingoMachinePage.module.css";
+import FreezeIMS from "../components/FreezeIMS";
+import SlotMachine from "../components/SlotMachine";
+import bingoBgmTrack from "../assets/Pops_05.mp3";
 
 /**
  * 抽選処理やプレビュー、設定モーダルなど画面全体の挙動を担うビンゴページ。
  */
 function BingoMachinePage() {
+  const [fx, setFx] = useState(0);
+  const [isSlotActive, setSlotActive] = useState(false);
+  const [slotSession, setSlotSession] = useState(0);
+  const handleFreezeComplete = useCallback(() => {
+    setSlotActive(true);
+    setSlotSession((value) => value + 1);
+  }, []);
+  const closeSlot = useCallback(() => {
+    setSlotActive(false);
+  }, []);
   const dispatch = useAppDispatch();
   const numbersPerDraw = useAppSelector((state) => state.settings.numbersPerDraw);
   const historyDensity = useAppSelector((state) => state.settings.historyDensity);
   const theme = useAppSelector((state) => state.settings.theme);
+  const bgmVolume = useAppSelector((state) => state.settings.bgmVolume);
+  const sfxVolume = useAppSelector((state) => state.settings.sfxVolume);
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
   const [remainingNumbers, setRemainingNumbers] = useState<number[]>(ALL_NUMBERS);
   const [lastNumber, setLastNumber] = useState<number | null>(null);
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isThemeModalOpen, setThemeModalOpen] = useState(false);
+  const [isResetModalOpen, setResetModalOpen] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [previewNumber, setPreviewNumber] = useState<number | null>(null);
   const [recentBatch, setRecentBatch] = useState<number[] | null>(null);
@@ -40,6 +61,22 @@ function BingoMachinePage() {
   const spinIntervalRef = useRef<number | null>(null);
   const remainingRef = useRef(remainingNumbers);
   const numbersPerDrawRef = useRef(numbersPerDraw);
+  const revealSoundRef = useRef<HTMLAudioElement | null>(null);
+  const freezeSoundRef = useRef<HTMLAudioElement | null>(null);
+  const bingoBgmRef = useRef<HTMLAudioElement | null>(null);
+  const bingoBgmStartedRef = useRef(false);
+
+  const triggerFreeze = useCallback(() => {
+    if (bingoBgmRef.current) {
+      bingoBgmRef.current.pause();
+    }
+    const freezeAudio = freezeSoundRef.current;
+    if (freezeAudio) {
+      freezeAudio.currentTime = 0;
+      void freezeAudio.play().catch(() => undefined);
+    }
+    setFx((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     remainingRef.current = remainingNumbers;
@@ -48,6 +85,73 @@ function BingoMachinePage() {
   useEffect(() => {
     numbersPerDrawRef.current = numbersPerDraw;
   }, [numbersPerDraw]);
+
+  useEffect(() => {
+    const openAudio = new Audio(bingoOpenSound);
+    openAudio.volume = Math.max(0, Math.min(1, sfxVolume / 100));
+    revealSoundRef.current = openAudio;
+
+    const freezeAudio = new Audio(freezeStartSound);
+    freezeAudio.volume = Math.max(0, Math.min(1, sfxVolume / 100));
+    freezeSoundRef.current = freezeAudio;
+
+    return () => {
+      openAudio.pause();
+      freezeAudio.pause();
+      revealSoundRef.current = null;
+      freezeSoundRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = new Audio(bingoBgmTrack);
+    audio.loop = true;
+    audio.volume = Math.max(0, Math.min(1, bgmVolume / 100));
+    bingoBgmRef.current = audio;
+    return () => {
+      audio.pause();
+      bingoBgmRef.current = null;
+      bingoBgmStartedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const normalized = Math.max(0, Math.min(1, sfxVolume / 100));
+    if (revealSoundRef.current) {
+      revealSoundRef.current.volume = normalized;
+    }
+    if (freezeSoundRef.current) {
+      freezeSoundRef.current.volume = normalized;
+    }
+  }, [sfxVolume]);
+
+  useEffect(() => {
+    if (bingoBgmRef.current) {
+      bingoBgmRef.current.volume = Math.max(0, Math.min(1, bgmVolume / 100));
+    }
+  }, [bgmVolume]);
+
+  const startBingoBgmIfNeeded = useCallback(() => {
+    if (bingoBgmStartedRef.current) {
+      return;
+    }
+    const audio = bingoBgmRef.current;
+    if (!audio) {
+      return;
+    }
+    bingoBgmStartedRef.current = true;
+    audio.currentTime = 0;
+    void audio.play().catch(() => undefined);
+  }, []);
+
+  const playRevealSound = useCallback(() => {
+    const audio = revealSoundRef.current;
+    if (!audio) {
+      return;
+    }
+    audio.currentTime = 0;
+    void audio.play().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -71,12 +175,25 @@ function BingoMachinePage() {
    * 抽選確定までのスピンプレビューを開始する。
    * すでにスピン中または残り番号がない場合は何もしない。
    */
+  useEffect(() => {
+    const bgm = bingoBgmRef.current;
+    if (!bgm) {
+      return;
+    }
+    if (isSlotActive) {
+      bgm.pause();
+    } else if (bingoBgmStartedRef.current) {
+      void bgm.play().catch(() => undefined);
+    }
+  }, [isSlotActive]);
+
   const startSpin = useCallback(() => {
     if (isSpinning || remainingRef.current.length === 0) {
       return;
     }
 
     setIsSpinning(true);
+    startBingoBgmIfNeeded();
     setRecentBatch(null);
     setPreviewNumber(() => {
       const pool = remainingRef.current;
@@ -94,7 +211,7 @@ function BingoMachinePage() {
       const index = Math.floor(Math.random() * pool.length);
       setPreviewNumber(pool[index]);
     }, SPIN_INTERVAL_MS);
-  }, [isSpinning]);
+  }, [isSpinning, startBingoBgmIfNeeded]);
 
   /**
    * スピンプレビューを停止し、抽選結果を履歴と状態に反映する。
@@ -142,6 +259,12 @@ function BingoMachinePage() {
     setLastNumber(null);
     setRecentBatch(null);
   };
+  const handleResetRequest = () => setResetModalOpen(true);
+  const handleResetCancel = () => setResetModalOpen(false);
+  const handleResetConfirm = () => {
+    resetGame();
+    setResetModalOpen(false);
+  };
 
   /**
    * 「一度に抽選する個数」のスライダー変更を状態へ反映し、まとめ表示をリセットする。
@@ -149,6 +272,12 @@ function BingoMachinePage() {
   const handleNumbersPerDrawChange = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch(setNumbersPerDrawAction(Number(event.target.value)));
     setRecentBatch(null);
+  };
+  const handleBgmVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    dispatch(setBgmVolumeAction(Number(event.target.value)));
+  };
+  const handleSfxVolumeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    dispatch(setSfxVolumeAction(Number(event.target.value)));
   };
 
   const primaryButtonDisabled = !isSpinning && remainingNumbers.length === 0;
@@ -191,6 +320,13 @@ function BingoMachinePage() {
   );
 
   const displayNumber = previewNumber ?? lastNumber;
+
+  useEffect(() => {
+    if (lastNumber === null) {
+      return;
+    }
+    playRevealSound();
+  }, [lastNumber, playRevealSound]);
 
   const hasHistory = drawnNumbers.length > 0;
   const reversedHistory = useMemo(
@@ -266,7 +402,7 @@ function BingoMachinePage() {
         return;
       }
 
-      if (isSettingsOpen || isThemeModalOpen) {
+      if (isSettingsOpen || isThemeModalOpen || isSlotActive) {
         return;
       }
 
@@ -283,8 +419,29 @@ function BingoMachinePage() {
     handleSpaceToggle,
     isSettingsOpen,
     isThemeModalOpen,
+    isSlotActive,
     shouldShowBatchModal,
   ]);
+
+  useEffect(() => {
+    const handleFreezeKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "i") {
+        return;
+      }
+
+      if (isSettingsOpen || isThemeModalOpen || shouldShowBatchModal || isSlotActive) {
+        return;
+      }
+
+      event.preventDefault();
+      triggerFreeze();
+    };
+
+    window.addEventListener("keydown", handleFreezeKey);
+    return () => {
+      window.removeEventListener("keydown", handleFreezeKey);
+    };
+  }, [isSettingsOpen, isSlotActive, isThemeModalOpen, shouldShowBatchModal, triggerFreeze]);
 
   const containerClass = classNames(styles.container, styles[theme]);
 
@@ -293,7 +450,7 @@ function BingoMachinePage() {
       <div className={styles.topBar}>
         <header className={styles.header}>
           <h1 className={styles.title}>もとやまンゴ</h1>
-          <p className={styles.subtitle}>develop by: もとやま</p>
+          <p className={styles.subtitle}>~Motoyama'sBingo~</p>
         </header>
         <button
           type="button"
@@ -318,7 +475,7 @@ function BingoMachinePage() {
               {drawButtonLabel}
             </button>
 
-            <button type="button" onClick={resetGame} className={styles.resetButton}>
+            <button type="button" onClick={handleResetRequest} className={styles.resetButton}>
               リセット
             </button>
 
@@ -358,7 +515,11 @@ function BingoMachinePage() {
       </div>
 
       {shouldShowBatchModal && recentBatch && (
-        <BatchResultModal batch={recentBatch} onConfirm={confirmBatchModal} />
+        <BatchResultModal
+          batch={recentBatch}
+          onConfirm={confirmBatchModal}
+          onRevealNumber={playRevealSound}
+        />
       )}
 
       {isSettingsOpen && !isThemeModalOpen && (
@@ -369,6 +530,10 @@ function BingoMachinePage() {
           historyOptions={HISTORY_DENSITY_OPTIONS}
           onNumbersPerDrawChange={handleNumbersPerDrawChange}
           onSelectHistoryDensity={handleHistoryDensityChange}
+          bgmVolume={bgmVolume}
+          onBgmVolumeChange={handleBgmVolumeChange}
+          sfxVolume={sfxVolume}
+          onSfxVolumeChange={handleSfxVolumeChange}
           onOpenThemeModal={openThemeModal}
           onClose={closeSettings}
         />
@@ -385,25 +550,16 @@ function BingoMachinePage() {
           onClose={closeThemeModal}
         />
       )}
+      {isResetModalOpen && (
+        <ConfirmResetModal onConfirm={handleResetConfirm} onCancel={handleResetCancel} />
+      )}
+      {isSlotActive && (
+        <SlotMachine key={slotSession} onExit={closeSlot} bgmVolume={bgmVolume} />
+      )}
+      <FreezeIMS trigger={fx} onComplete={handleFreezeComplete} />
     </main>
   );
 }
 
 export default BingoMachinePage;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

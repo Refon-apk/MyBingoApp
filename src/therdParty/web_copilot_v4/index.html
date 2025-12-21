@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mini Slot</title>
+
+<style>
+:root {
+  --symbol-size: 120px;
+}
+
+/* ===============================
+   画面全体 = 筐体
+================================ */
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: #000; /* 装飾前なので一旦黒 */
+  font-family: system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ===============================
+   上部：表示エリア
+================================ */
+.display-area {
+  height: 75vh;
+  width: 100vw;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: url("./assets/juggler_bg.png") no-repeat center center;
+  background-size: cover;
+}
+
+/* リール枠（中央・大） */
+.reel-frame {
+  background: #f5f5f5;
+  padding: 2vh 2vw;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 3px #ccc,
+    0 10px 30px rgba(0,0,0,0.6);
+}
+
+.reels {
+  display: flex;
+  gap: 2vw;
+}
+
+.reel {
+  width: 18vw;
+  max-width: 160px;
+  height: 12vw;
+  max-height: 140px;
+  background: #fff;
+  overflow: hidden;
+  border-radius: 8px;
+  outline: 2px solid #bbb;
+  position: relative;
+}
+
+.strip {
+  position: absolute;
+  width: 100%;
+}
+
+.symbol {
+  height: var(--symbol-size);
+  display: grid;
+  place-items: center;
+  border-bottom: 1px solid #eee;
+}
+
+.symbol img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+/* ===============================
+   GOGOランプ（ギザギザ吹き出し・本命）
+================================ */
+.gogo-lamp {
+  position: absolute;
+  left: 5vw;
+  bottom: 6vh;
+
+  width: 120px;
+  height: 64px;
+
+  background: #222;
+  color: #ff00ff;
+  font-weight: bold;
+  font-size: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: 0.4;
+  z-index: 2;
+
+  transform: rotate(-6deg);        /* ← 少し左下がり */
+  letter-spacing: 1px;             /* ← 実機っぽい間隔 */
+
+  /* ★ 形そのものをギザギザにする */
+  clip-path: polygon(
+    10% 0%, 20% 10%, 30% 0%, 40% 10%, 50% 0%,
+    60% 10%, 70% 0%, 80% 10%, 90% 0%,
+    100% 10%, 90% 20%, 100% 30%, 90% 40%, 100% 50%,
+    90% 60%, 100% 70%, 90% 80%, 100% 90%,
+    90% 100%, 80% 90%, 70% 100%, 60% 90%, 50% 100%,
+    40% 90%, 30% 100%, 20% 90%, 10% 100%,
+    0% 90%, 10% 80%, 0% 70%, 10% 60%, 0% 50%,
+    10% 40%, 0% 30%, 10% 20%, 0% 10%
+  );
+}
+
+/* ペカ時 */
+.gogo-lamp.active {
+  opacity: 1;
+  background: #ff00ff;
+  color: #fff;
+  animation: gogo-pulse 0.6s infinite;
+}
+
+@keyframes gogo-pulse {
+  0%,100% {
+    transform: rotate(-6deg) scale(1);
+    box-shadow: 0 0 12px #ff00ff;
+  }
+  50% {
+    transform: rotate(-6deg) scale(1.05);
+    box-shadow: 0 0 28px #ff00ff;
+  }
+}
+
+
+
+@keyframes blink {
+  0%,100% { background:#222; }
+  50% { background:#ff00ff; color:#fff; box-shadow:0 0 24px #ff00ff; }
+}
+
+/* ===============================
+   下部：操作パネル
+================================ */
+.control-area {
+  height: 25vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  background: linear-gradient(
+    to bottom,
+    #f0f0f0 0%,
+    #d9d9d9 40%,
+    #bfbfbf 100%
+  );
+  border-top: 4px solid #999;
+}
+
+/* レバー */
+.lever-btn {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: transparent;
+  border: none;
+  margin-left: 6vw;
+}
+
+.lever-ball {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ff9999, #b00000);
+  transform: translateX(-50%);
+  box-shadow:
+    inset 0 3px 5px rgba(255,255,255,0.45),
+    0 6px 10px rgba(0,0,0,0.45);
+  transition: transform 80ms ease;
+}
+
+.lever-btn:active .lever-ball {
+  transform: translateX(-50%) translateY(10px);
+}
+
+/* 停止ボタン */
+.stop-group {
+  display: flex;
+  gap: 32px;
+  margin-left: auto;
+  margin-right: auto;
+  transform: translateX(-80px);
+}
+
+.stop-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ff6666, #c40000);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+  border: none;
+  box-shadow:
+    0 6px 0 #7a0000,
+    inset 0 2px 4px rgba(255,255,255,0.4);
+}
+
+/* 停止ボタン：有効時に発光 */
+.stop-btn.enabled {
+  box-shadow:
+    0 0 12px rgba(255, 80, 80, 0.9),
+    0 6px 0 #7a0000,
+    inset 0 2px 4px rgba(255,255,255,0.4);
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- 上部表示 -->
+<div class="display-area">
+  <div class="reel-frame">
+    <div class="reels">
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
+      <div class="reel"><div class="strip"></div></div>
+    </div>
+  </div>
+  <div class="gogo-lamp" id="gogoLamp">GOGO!</div>
+</div>
+
+<!-- 下部操作 -->
+<div class="control-area">
+  <button id="startBtn" class="lever-btn">
+    <span class="lever-ball"></span>
+  </button>
+
+  <div class="stop-group">
+    <button id="stop1" class="stop-btn">1</button>
+    <button id="stop2" class="stop-btn">2</button>
+    <button id="stop3" class="stop-btn">3</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   サウンド定義
+===================================================== */
+
+// ※ ユーザー操作後でないと再生できないので
+// Audio オブジェクトは先に作っておく
+const soundLever = new Audio('./assets/sound/lever.mp3');
+const soundStop  = new Audio('./assets/sound/stop.mp3');
+const soundGogo  = new Audio('./assets/sound/gogo.mp3');
+
+// 連打対策：毎回頭から鳴らす
+function playSound(audio){
+  audio.currentTime = 0;
+  audio.play().catch(()=>{});
+}
+
+/* =====================================================
+   設定
+===================================================== */
+
+/*
+GOGO_MODE:
+ "PRE"  : 先告知（レバーON時にペカ）
+ "LAST" : 最終停止告知（3停止後にペカ）
+*/
+const GOGO_MODE = "PRE";
+
+/*
+DEBUG_MODE:
+ null   : 通常挙動
+ "WIN"  : 必ず当たり
+ "LOSE" : 必ずハズレ
+*/
+const DEBUG_MODE = null;
+
+/*
+DEBUG_WIN_ROLE:
+ 0 : cherry
+ 1 : lemon
+ 2 : bar
+ 3 : seven
+*/
+const DEBUG_WIN_ROLE = 3;
+
+/* =====================================================
+   内部状態
+===================================================== */
+
+const SYMBOL_SIZE = 120;
+const symbols = [
+  { name: "cherry", src: "./assets/cherry.png" },
+  { name: "lemon",  src: "./assets/lemon.png" },
+  { name: "bar",    src: "./assets/bar.png" },
+  { name: "seven",  src: "./assets/seven.png" },
+];
+
+const reels = document.querySelectorAll('.reel');
+const state = [...Array(3)].map(() => ({
+  spinning: false,
+  pos: 0,
+  speed: 0,
+  maxSpeed: 42,
+  accel: 2.2,
+  raf: null,
+  resultIndex: null
+}));
+
+let canStop = false;
+let isWinRound = false;
+
+const LOOPS = 30;
+const STRIP_HEIGHT = (LOOPS + 1) * symbols.length * SYMBOL_SIZE;
+
+/* =====================================================
+   初期化（既存構造前提）
+===================================================== */
+
+function build(strip){
+  strip.innerHTML = '';
+  for(let l = 0; l <= LOOPS; l++){
+    symbols.forEach(s => {
+      const d = document.createElement('div');
+      d.className = 'symbol';
+      const i = document.createElement('img');
+      i.src = s.src;
+      d.appendChild(i);
+      strip.appendChild(d);
+    });
+  }
+}
+
+reels.forEach(r => build(r.querySelector('.strip')));
+
+/* =====================================================
+   レバーON
+===================================================== */
+
+function startSpin(){
+  playSound(soundLever);   // ★ レバー音
+
+  canStop = false;
+  gogoLamp.classList.remove('active');
+
+  // --- 当たり判定はここで1回だけ ---
+  if (DEBUG_MODE === "WIN") {
+    isWinRound = true;
+  } else if (DEBUG_MODE === "LOSE") {
+    isWinRound = false;
+  } else {
+    // 通常時はランダム（今回は簡易）
+    isWinRound = Math.random() < 0.1;
+  }
+
+  // --- 先告知 ---
+  if (GOGO_MODE === "PRE" && isWinRound) {
+    gogoLamp.classList.add('active');
+    playSound(soundGogo);   // ★ ペカ音
+  }
+
+  // 停止ボタン無効
+  document.querySelectorAll('.stop-btn').forEach(btn => {
+    btn.classList.remove('enabled');
+  });
+
+  // リール開始
+  state.forEach((s,i)=>{
+    s.spinning = true;
+    s.pos = 0;
+    s.speed = 0;
+    s.resultIndex = null;
+    animate(i);
+  });
+
+  // 実機っぽい間
+  setTimeout(() => {
+    canStop = true;
+    document.querySelectorAll('.stop-btn').forEach(btn => {
+      btn.classList.add('enabled');
+    });
+  }, 200);
+}
+
+/* =====================================================
+   スピンアニメーション
+===================================================== */
+
+function animate(i){
+  const s = state[i];
+  const strip = reels[i].querySelector('.strip');
+
+  function step(){
+    if(!s.spinning) return;
+    s.speed = Math.min(s.maxSpeed, s.speed + s.accel);
+    s.pos -= s.speed;
+    if (s.pos < -STRIP_HEIGHT) s.pos += STRIP_HEIGHT;
+    strip.style.transform = `translateY(${s.pos}px)`;
+    s.raf = requestAnimationFrame(step);
+  }
+  step();
+}
+
+/* =====================================================
+   停止
+===================================================== */
+
+function stopReel(i){
+  if (!canStop) return;
+  const s = state[i];
+  if (!s.spinning) return;
+
+  playSound(soundStop);    // ★ 停止音
+
+  s.spinning = false;
+  cancelAnimationFrame(s.raf);
+
+  // --- 停止絵柄 ---
+  let target;
+  if (isWinRound) {
+    target = DEBUG_WIN_ROLE;
+  } else {
+    target = (i + 1) % symbols.length;
+  }
+
+  s.resultIndex = target;
+
+  const strip = reels[i].querySelector('.strip');
+  strip.style.transition = 'transform 600ms cubic-bezier(0.1,0.8,0.2,1)';
+  strip.style.transform = `translateY(${-target * SYMBOL_SIZE}px)`;
+
+  document.getElementById(`stop${i+1}`).classList.remove('enabled');
+
+  strip.addEventListener('transitionend', checkResult, { once:true });
+}
+
+/* =====================================================
+   揃い判定（最終停止告知）
+===================================================== */
+
+function checkResult(){
+  if (!state.every(s => s.resultIndex !== null)) return;
+
+  const win = state.every(s => s.resultIndex === state[0].resultIndex);
+
+  if (GOGO_MODE === "LAST" && win) {
+    gogoLamp.classList.add('active');
+    playSound(soundGogo); // ★ ペカ音
+  }
+}
+
+/* =====================================================
+   イベント
+===================================================== */
+
+startBtn.onclick = startSpin;
+stop1.onclick = () => stopReel(0);
+stop2.onclick = () => stopReel(1);
+stop3.onclick = () => stopReel(2);
+</script>
+
+
+</body>
+</html>
