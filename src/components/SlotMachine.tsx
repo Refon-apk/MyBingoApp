@@ -5,6 +5,7 @@ import styles from "./SlotMachine.module.css";
 import leverSound from "../therdParty/web_copilot_v4/assets/sound/lever.mp3";
 import slotBgm from "../assets/bingoBGM.mp3";
 import reelStopSound from "../assets/reelStop.mp3";
+import gogoLampSound from "../assets/gogo.mp3";
 import bonusSuccessSound from "../assets/bonasSucces.mp3";
 import bonusFailSound from "../assets/bonasFaild.mp3";
 
@@ -54,6 +55,7 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
   const cheatModeRef = useRef(false);
   const cheatProgressRef = useRef(0);
   const enableTimeoutRef = useRef<number | null>(null);
+  const gogoSoundPlayedRef = useRef(false);
   const [stopEnabled, setStopEnabled] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const [gogoActive, setGogoActive] = useState(false);
   const [resultState, setResultState] = useState<"win" | "lose" | null>(null);
@@ -61,6 +63,7 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
 
   const leverSoundRef = useRef<HTMLAudioElement | null>(null);
   const reelStopSoundRef = useRef<HTMLAudioElement | null>(null);
+  const gogoLampSoundRef = useRef<HTMLAudioElement | null>(null);
   const bonusSuccessSoundRef = useRef<HTMLAudioElement | null>(null);
   const bonusFailSoundRef = useRef<HTMLAudioElement | null>(null);
   const bgmRef = useRef<HTMLAudioElement | null>(null);
@@ -81,6 +84,7 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
   useEffect(() => {
     leverSoundRef.current = new Audio(leverSound);
     reelStopSoundRef.current = new Audio(reelStopSound);
+    gogoLampSoundRef.current = new Audio(gogoLampSound);
     bonusSuccessSoundRef.current = new Audio(bonusSuccessSound);
     bonusFailSoundRef.current = new Audio(bonusFailSound);
   }, []);
@@ -112,6 +116,17 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
     }
     audio.currentTime = 0;
     void audio.play().catch(() => undefined);
+  }, []);
+
+  const assignThirdLetter = useCallback((forcedLetter?: (typeof LETTERS)[number]) => {
+    if (forcedLetter) {
+      thirdLetterRef.current = forcedLetter;
+    } else if (cheatModeRef.current) {
+      thirdLetterRef.current = "S";
+    } else {
+      thirdLetterRef.current = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+    }
+    isWinRoundRef.current = thirdLetterRef.current === "S";
   }, []);
 
   const cleanup = useCallback(() => {
@@ -167,17 +182,19 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
 
     const win = isWinRoundRef.current;
     setResultState(win ? "win" : "lose");
-  if (GOGO_MODE === "LAST") {
-    if (win) {
-      setGogoActive(true);
-      playSound(bonusSuccessSoundRef);
-    } else {
+
+    if (GOGO_MODE !== "LAST") {
+      playSound(win ? gogoLampSoundRef : bonusFailSoundRef);
+    } else if (!win) {
       playSound(bonusFailSoundRef);
+    } else if (!gogoSoundPlayedRef.current) {
+      setGogoActive(true);
+      playSound(gogoLampSoundRef);
+      gogoSoundPlayedRef.current = true;
     }
-  } else {
-    // PREの場合は結果音のみ
-    playSound(win ? bonusSuccessSoundRef : bonusFailSoundRef);
-  }
+    if (win) {
+      playSound(bonusSuccessSoundRef);
+    }
   }, [playSound]);
 
   const stopReel = useCallback(
@@ -220,6 +237,16 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
 
       const handleTransitionEnd = () => {
         strip.removeEventListener("transitionend", handleTransitionEnd);
+        if (
+          index === 1 &&
+          GOGO_MODE === "LAST" &&
+          isWinRoundRef.current &&
+          !gogoSoundPlayedRef.current
+        ) {
+          setGogoActive(true);
+          playSound(gogoLampSoundRef);
+          gogoSoundPlayedRef.current = true;
+        }
         checkResult();
       };
       strip.addEventListener("transitionend", handleTransitionEnd);
@@ -230,20 +257,16 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
   const startSpin = useCallback(() => {
     completedRef.current = false;
     canStopRef.current = false;
+    gogoSoundPlayedRef.current = false;
     setStopEnabled([false, false, false]);
     setGogoActive(false);
     setResultState(null);
-    // ---- 先告知（PRE） ----
-    if (GOGO_MODE === "PRE") {
-      if (isWinRoundRef.current) {
-        setGogoActive(true);
-        playSound(bonusSuccessSoundRef);
-      }
+    assignThirdLetter();
+    if (GOGO_MODE === "PRE" && isWinRoundRef.current) {
+      setGogoActive(true);
+      playSound(gogoLampSoundRef);
+      gogoSoundPlayedRef.current = true;
     }
-
-    thirdLetterRef.current = cheatModeRef.current
-      ? "S"
-      : LETTERS[Math.floor(Math.random() * LETTERS.length)];
     stateRef.current.forEach((state, index) => {
       state.spinning = true;
       state.pos = 0;
@@ -256,8 +279,6 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
       }
       animateReel(index);
     });
-
-    isWinRoundRef.current = thirdLetterRef.current === "S";
     playSound(leverSoundRef);
 
     enableTimeoutRef.current = window.setTimeout(() => {
@@ -275,12 +296,21 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
 
   const handleCheatSequence = useCallback(
     (key: string) => {
+      if (stateRef.current.some((state) => state.resultIndex !== null)) {
+        cheatProgressRef.current = 0;
+        return;
+      }
       const targetIndex = cheatProgressRef.current;
       if (key === CHEAT_SEQUENCE[targetIndex]) {
         cheatProgressRef.current += 1;
         if (cheatProgressRef.current === CHEAT_SEQUENCE.length) {
           cheatModeRef.current = !cheatModeRef.current;
           cheatProgressRef.current = 0;
+          if (cheatModeRef.current) {
+            assignThirdLetter("S");
+          } else {
+            assignThirdLetter();
+          }
         }
         return;
       }

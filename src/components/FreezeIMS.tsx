@@ -27,8 +27,8 @@ export default function FreezeIMS({ trigger, text = "IMS", onComplete }: FreezeI
     setShowSlotChance(false);
 
     const offMs = 820;
-    const blackMs = 1200;
-    const quotesMs = 1800;
+    const blackMs = 4000;
+    const quotesMs = 3000;
     const returnDelayMs = 3000; // wait 3s after animation completes before returning
 
     const t1 = setTimeout(() => setPhase("black"), offMs);
