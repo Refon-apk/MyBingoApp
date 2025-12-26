@@ -15,6 +15,9 @@ const SYMBOL_SIZE = 120;
 const LOOPS = 30;
 const STRIP_HEIGHT = (LOOPS + 1) * LETTERS.length * SYMBOL_SIZE;
 
+const GOGO_MODE: "PRE" | "LAST" = "LAST";
+
+
 type SlotMachineProps = {
   onExit: () => void;
   bgmVolume: number;
@@ -164,8 +167,17 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
 
     const win = isWinRoundRef.current;
     setResultState(win ? "win" : "lose");
-    setGogoActive(win);
+  if (GOGO_MODE === "LAST") {
+    if (win) {
+      setGogoActive(true);
+      playSound(bonusSuccessSoundRef);
+    } else {
+      playSound(bonusFailSoundRef);
+    }
+  } else {
+    // PREの場合は結果音のみ
     playSound(win ? bonusSuccessSoundRef : bonusFailSoundRef);
+  }
   }, [playSound]);
 
   const stopReel = useCallback(
@@ -221,6 +233,14 @@ export default function SlotMachine({ onExit, bgmVolume }: SlotMachineProps) {
     setStopEnabled([false, false, false]);
     setGogoActive(false);
     setResultState(null);
+    // ---- 先告知（PRE） ----
+    if (GOGO_MODE === "PRE") {
+      if (isWinRoundRef.current) {
+        setGogoActive(true);
+        playSound(bonusSuccessSoundRef);
+      }
+    }
+
     thirdLetterRef.current = cheatModeRef.current
       ? "S"
       : LETTERS[Math.floor(Math.random() * LETTERS.length)];
